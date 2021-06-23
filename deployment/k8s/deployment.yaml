@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-boilerplate
+  namespace: {{k8s-ns}}
+  labels:
+    app: api-boilerplate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-boilerplate
+  template:
+    metadata:
+      labels:
+        app: api-boilerplate
+    spec:
+      imagePullSecrets:
+       - name: gcr-json-key 
+      containers:
+      - name: api-boilerplate
+        resources:
+          limits:
+            cpu: {{cpu-limit}}
+            memory: {{memory-limit}}
+          requests:
+            cpu: {{cpu-request}}
+            memory: {{memory-request}}
+        image: gcr.io/xenon-effect-292404/api-boilerplate:{{image-tag}}
+        ports:
+        - containerPort: {{port}}
+        env :
+        - name: "PORT"
+          value: "{{port}}"
+        - name: "GO_ENV"
+          value: "{{go-env}}"
+        - name: "LOG_PARAM_FILE"
+          value: "{{log-param-file}}"
+        - name: "TIMEOUT"
+          value: "{{timeout}}"
+        - name: "MONGO_HOST"
+          value: "{{mongo-host}}"
+        - name: "MONGO_PORT"
+          value: "{{mongo-port}}"
+        - name: "MONGO_USER"
+          value: "{{mongo-user}}"
+        - name: "MONGO_PASS"
+          value: "{{mongo-pass}}"
+        - name: "MONGO_DB_NAME"
+          value: "{{mongo-db-name}}"
+        - name: "MONGO_DB_AUTH"
+          value: "{{mongo-db-auth}}"
+        - name: "MONGO_ATLAS"
+          value: "{{mongo-atlas}}"
+        - name: "MONGO_COLLECTION_USER"
+          value: "{{mongo-collection-user}}"
+        - name: "JWT_SECRET_KEY"
+          value: "{{jwt-secret-key}}"
+        - name: "JWT_ISS"
+          value: "{{jwt-iss}}"
+        - name: "JWT_MEMBER_SECRET_KEY"
+          value: "{{jwt-member-secret-key}}"
+        - name: "JWT_MEMBER_ISS"
+          value: "{{jwt-member-iss}}"

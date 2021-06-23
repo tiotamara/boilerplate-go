@@ -1,0 +1,6 @@
+export KUBECONFIG="$(k3d kubeconfig write dev-cluster)"
+cd /home/deployer/tmp/ && \
+ls -al && \
+kubectl apply -f deployment.yaml --force && \
+kubectl apply -f service.yaml --force && \ 
+rm -f *.yaml

@@ -1,0 +1,96 @@
+options:
+  docker: true
+
+pipelines:
+  branches:
+    master:
+      # - step:
+      #     name: Unit test
+      #     image: golang
+      #     script:
+      #       - make testcoverage
+      - step:
+          name: Build image
+          script:
+            - docker build -t build-service .
+            - docker save --output tmp-image.docker build-service
+          artifacts:
+            - tmp-image.docker
+      - step:
+          name: Push image
+          image: google/cloud-sdk:alpine
+          script:
+            - docker load --input ./tmp-image.docker
+            - echo $GCLOUD_API_KEYFILE > ./gcloud-api-key.json
+            - cat ./gcloud-api-key.json
+            - gcloud auth activate-service-account --key-file gcloud-api-key.json
+            - cat ./gcloud-api-key.json | docker login -u _json_key --password-stdin https://gcr.io
+            - gcloud config set project $GCLOUD_PROJECT
+            - export TAG=$(echo "$BITBUCKET_COMMIT")
+            - export SUFFIX=$([[ ! -z "$TAG" ]] && echo ":$TAG" || echo "")
+            - export IMAGE_NAME=gcr.io/xenon-effect-292404/api-boilerplate${SUFFIX}
+            - docker tag build-service ${IMAGE_NAME}
+            - cat ./gcloud-api-key.json | docker login -u _json_key --password-stdin https://gcr.io
+            - docker push ${IMAGE_NAME}
+            - echo ${IMAGE_NAME} > image_name.txt
+          artifacts:
+            - image_name.txt
+              
+      - step:
+          name: Deploy master
+          image: google/cloud-sdk:alpine 
+          script:
+            - echo $GCLOUD_GKE_API_KEYFILE > ./gcloud-gke-api-key.json
+            - gcloud auth activate-service-account --key-file gcloud-gke-api-key.json
+            - gcloud components install kubectl
+            - gcloud config set project $GCLOUD_PROJECT
+            - export TARGET=PROD
+            - sed -i "s/{{image-tag}}/$BITBUCKET_COMMIT/g" deployment/k8s/deployment.yaml
+            - cat deployment/k8s/deployment.yaml
+            - cd deployment/
+            - chmod +x envar_filter.sh && ./envar_filter.sh
+            - gcloud container clusters get-credentials prod-cluster --zone=asia-southeast2-b
+            - chmod +x deploy.sh && ./deploy.sh
+    dev:
+      # - step:
+      #     name: Unit test
+      #     image: golang
+      #     script:
+      #       - make testcoverage
+      - step:
+          name: Build image
+          script:
+            - docker build -t build-service .
+            - docker save --output tmp-image.docker build-service
+          artifacts:
+            - tmp-image.docker
+      - step:
+          name: Push image
+          image: google/cloud-sdk:alpine
+          script:
+            - docker load --input ./tmp-image.docker
+            - echo $GCLOUD_API_KEYFILE > ./gcloud-api-key.json
+            - cat ./gcloud-api-key.json
+            - gcloud auth activate-service-account --key-file gcloud-api-key.json
+            - cat ./gcloud-api-key.json | docker login -u _json_key --password-stdin https://gcr.io
+            - gcloud config set project $GCLOUD_PROJECT
+            - export TAG=$(echo "$BITBUCKET_COMMIT")
+            - export SUFFIX=$([[ ! -z "$TAG" ]] && echo ":$TAG" || echo "")
+            - export IMAGE_NAME=gcr.io/xenon-effect-292404/api-boilerplate${SUFFIX}
+            - docker tag build-service ${IMAGE_NAME}
+            - cat ./gcloud-api-key.json | docker login -u _json_key --password-stdin https://gcr.io
+            - docker push ${IMAGE_NAME}
+            - echo ${IMAGE_NAME} > image_name.txt
+          artifacts:
+            - image_name.txt
+              
+      - step:
+          name: Deploy dev 
+          script:
+            - export TARGET=DEV
+            - sed -i "s/{{image-tag}}/$BITBUCKET_COMMIT/g" deployment/k8s/deployment.yaml
+            - cat deployment/k8s/deployment.yaml
+            - cd deployment/
+            - chmod +x envar_filter.sh && ./envar_filter.sh
+            - umask  077 ; echo $DEPLOYER_KEY > ~/.ssh/id_rsa
+            - chmod +x deploy.sh && ./deploy.sh
